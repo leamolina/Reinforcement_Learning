@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Nom du fichier contenant les données
-fichier = "data.txt"
+fichier = "data_lea.txt"
 
 # Initialisation de la liste pour stocker les scores
 rewards = []
