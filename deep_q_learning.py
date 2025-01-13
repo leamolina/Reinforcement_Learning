@@ -1,0 +1,140 @@
+import gymnasium as gym
+import numpy as np
+import random
+import cv2
+import ale_py
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch import optim
+from collections import deque
+
+# Charger l'environnement (étape 1 sur l'overleaf)
+gym.register_envs(ale_py)
+env = gym.make("ALE/Assault-v5", render_mode="human")
+num_actions = env.action_space.n
+input_shape = (4, 84, 84)  # Stack de 4 frames, 84x84
+
+# Hyperparamètres (étape 6 sur l'overleaf)
+gamma = 0.99
+epsilon = 1.0  # Taux d'exploration
+epsilon_min = 0.01  # Minimum pour epsilon
+epsilon_decay = 0.995  # Décroissance d'épsilon
+episodes = 5000  # Nombre d'épisodes d'entraînement
+minibatch_size = 32
+replay_memory_size = 10000
+alpha = 0.0001  # Taux d'apprentissage
+
+# Mémoire de replay
+replay_memory = deque(maxlen=replay_memory_size)
+
+# Preprocessing (étape 2 sur l'overleaf)
+def preprocessing(frame):
+    gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    resized_frame = cv2.resize(gray_frame, (84, 84), interpolation=cv2.INTER_AREA)
+    normalized_frame = resized_frame / 255.0
+    return normalized_frame
+
+# Réseau de neurones (étape 3 sur l'overleaf)
+# On décide de faire un objet pour pouvoir le réutiliser plus facilement
+
+class DQN(nn.Module):
+
+    # On initialise le réseau de neuronnes selon ce qu'on a dit sur l'overleaf
+    def __init__(self, input_shape, num_actions):
+        super(DQN, self).__init__()
+        self.conv1 = nn.Conv2d(input_shape[0], 16, kernel_size=8, stride=4) # Première couche
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2) # Deuxième couche
+        self.fc1 = nn.Linear(32 * 9 * 9, 256)  # Calculé après les convolutions
+        self.fc2 = nn.Linear(256, num_actions)
+
+    # Mise en forme du réseau de neuronnes à l'aide de PyTorch (activation ReLU pour les deux couches convolutionnelles)
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = x.view(x.size(0), -1)  # Aplatir
+        x = F.relu(self.fc1(x))
+        return self.fc2(x)
+
+# Instanciation du modèle (PyTorchà
+dqn = DQN(input_shape, num_actions)
+optimizer = optim.Adam(dqn.parameters(), lr=alpha)
+loss_fn = nn.MSELoss()
+
+# Fonction pour choisir une action (epsilon-greedy)
+def choose_action(state, epsilon, num_actions):
+    if np.random.rand() < epsilon:
+        return random.randint(0, num_actions - 1)
+    else:
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
+        with torch.no_grad():
+            q_values = dqn(state_tensor)
+        return torch.argmax(q_values).item()
+
+# Fonction pour entraîner le DQN
+def train_dqn():
+    if len(replay_memory) < minibatch_size:
+        return
+
+    # Échantillonner un minibatch
+    minibatch = random.sample(replay_memory, minibatch_size)
+    states, actions, rewards, next_states, dones = zip(*minibatch)
+
+    # Conversion en tenseurs
+    states = torch.FloatTensor(np.array(states)).to(device)
+    actions = torch.LongTensor(actions).to(device)
+    rewards = torch.FloatTensor(rewards).to(device)
+    next_states = torch.FloatTensor(np.array(next_states)).to(device)
+    dones = torch.FloatTensor(dones).to(device)
+
+    # Calcul des Q-valeurs cibles
+    q_values = dqn(states)
+    next_q_values = dqn(next_states)
+    target_q_values = rewards + gamma * torch.max(next_q_values, dim=1)[0] * (1 - dones)
+
+    # Calcul de la perte
+    predicted_q_values = q_values.gather(1, actions.unsqueeze(1)).squeeze(1)
+    loss = loss_fn(predicted_q_values, target_q_values.detach())
+
+    # Optimisation
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+# Étape 4 : Deep Q-Learning
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+dqn.to(device)
+
+for episode in range(episodes):
+    state, _ = env.reset()
+    state = preprocessing(state)
+    state_stack = np.stack([state] * 4, axis=0)  # Stack initial de 4 frames
+    done = False
+    score = 0
+
+    while not done:
+        # Choisir une action
+        action = choose_action(state_stack, epsilon, num_actions)
+
+        # Effectuer une action dans l'environnement
+        next_state, reward, done, _, _ = env.step(action)
+        next_state = preprocessing(next_state)
+        next_state_stack = np.append(state_stack[1:], [next_state], axis=0)
+
+        # Ajouter la transition à la mémoire de replay
+        replay_memory.append((state_stack, action, reward, next_state_stack, done))
+
+        # Mettre à jour l'état
+        state_stack = next_state_stack
+        score += reward
+
+        # Entraîner le modèle
+        train_dqn()
+
+    # Réduire epsilon (exploration vs exploitation)
+    if epsilon > epsilon_min:
+        epsilon *= epsilon_decay
+
+    print(f"Épisode {episode + 1}/{episodes}, Score: {score}, Epsilon: {epsilon:.4f}")
+
+env.close()
