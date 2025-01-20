@@ -11,8 +11,6 @@ import ale_py
 import time
 
 
-
-
 # Charger l'environnement
 gym.register_envs(ale_py)
 env = gym.make("ALE/Assault-v5", render_mode="human")
