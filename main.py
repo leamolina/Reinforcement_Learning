@@ -96,6 +96,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 trained_model = DuelingDQN(input_shape, num_actions).to(device)
 # Charger le modèle avec les poids uniquement
-trained_model.load_state_dict(torch.load("model_deep_q_learning_double.pth"))
+trained_model.load_state_dict(torch.load("model_deep_q_learning_double.pth", map_location=torch.device('cpu')))
 evaluate_policy(env, trained_model, episodes=5)
 env.close()
