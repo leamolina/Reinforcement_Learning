@@ -1,2 +1,0 @@
-Score : 210.0, Epsilon : 0.9950
-Score : 273.0, Epsilon : 0.9900

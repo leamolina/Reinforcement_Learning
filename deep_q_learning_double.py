@@ -117,7 +117,7 @@ def train(epsilon, num_actions, file_name):
 
             print(f"Épisode {episode + 1}/{episodes}, Score: {score}, Epsilon: {epsilon:.4f}")
             file.write(f"Score : {score}, Epsilon : {epsilon:.4f}\n")
-            torch.save(online_dqn.state_dict(), "model_deep_q_learning_double.pth")
+            torch.save(online_dqn.state_dict(), "Models/model_deep_q_learning_double.pth")
             env.close()
 
 
