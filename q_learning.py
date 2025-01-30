@@ -4,128 +4,118 @@ import random
 import ale_py
 import cv2
 import pickle as pkl
+import os  # Pour gérer les fichiers et dossiers
 
-# Charger l'environnement
-gym.register_envs(ale_py)
-env = gym.make("ALE/Assault-v5", render_mode="human")
-
-# Hyperparamètres
-alpha = 0.1  # Taux d'apprentissage
-gamma = 0.99  # Facteur de réduction
-epsilon = 1.0  # Epsilon de départ
-epsilon_decay = 0.995  # Décroissance d'épsilon
-epsilon_min = 0.01  # Minimum pour epsilon
-episodes = 1000  # Nombre d'épisodes
-
-
-# Modification de la discrétisation
-def preprocessing_q_learning(obs, n_bins=10):
-    # Convertir l'image en niveaux de gris
-    gray_obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
-
-    # Réduire la résolution de l'image
-    resized_obs = cv2.resize(gray_obs, (84, 84))
-
-    # Normaliser et quantifier l'image
-    normalized_obs = resized_obs / 255.0
-    quantized_obs = (normalized_obs * (n_bins - 1)).astype(int)
-
-    # Calculer un hash unique basé sur quelques caractéristiques de l'image
-    state_hash = hash(quantized_obs.tobytes())
-
-    return state_hash
-
-
-# Initialiser la table Q
-n_actions = env.action_space.n
+# La table Q est une variable globale
 Q = {}
 
+# Prétraitement pour Q-learning
+def preprocessing_q_learning(obs, n_bins=10):
+    gray_obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+    resized_obs = cv2.resize(gray_obs, (84, 84))
+    normalized_obs = resized_obs / 255.0
+    quantized_obs = (normalized_obs * (n_bins - 1)).astype(int)
+    state_hash = hash(quantized_obs.tobytes())
+    return state_hash
 
 # Récupération de Q
-def get_q_value(state, action):
+def get_q_value(state, action, n_actions):
     if state not in Q:
         Q[state] = np.zeros(n_actions)
     return Q[state][action]
 
-
-# Modification de Q
-def update_q_value(state, action, value):
+# Mise à jour de Q
+def update_q_value(state, action, value, n_actions):
     if state not in Q:
         Q[state] = np.zeros(n_actions)
     Q[state][action] = value
 
+# Entraînement Q-learning
+def train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes):
+    env = gym.make("ALE/Assault-v5", render_mode="rgb_array")
+    n_actions = env.action_space.n
+    global Q
 
-def train_q_learning():
+    with open(filename, "w")  as file:
+        for episode in range(episodes):
+            obs, info = env.reset()
+            state = preprocessing_q_learning(obs)
+            total_reward = 0
+            done = False
 
-    # Boucle d'entraînement
-    for episode in range(episodes):
-        obs, info = env.reset()
-        state = preprocessing_q_learning(obs)
-        total_reward = 0
-        done = False
-        steps = 0
+            while not done:
+                action = env.action_space.sample() if random.uniform(0, 1) < epsilon else np.argmax(Q.get(state, np.zeros(n_actions)))
+                next_obs, reward, terminated, truncated, info = env.step(action)
+                next_state = preprocessing_q_learning(next_obs)
+                total_reward += reward
+                done = terminated or truncated
 
-        while not done:
+                # Mise à jour Q-learning
+                current_q = get_q_value(state, action, n_actions)
+                max_next_q = np.max(Q.get(next_state, np.zeros(n_actions)))
+                new_q = current_q + alpha * (reward + gamma * max_next_q - current_q)
+                update_q_value(state, action, new_q, n_actions)
 
-            # Épsilon-greedy pour choisir une action
-            if random.uniform(0, 1) < epsilon:
-                action = env.action_space.sample()  # Exploration
-            else:
-                # Choisir l'action avec la meilleure valeur Q (exploitation)
-                action = np.argmax(Q.get(state, np.zeros(n_actions)))
+                state = next_state
 
-            # On effectue l'action
-            next_obs, reward, terminated, truncated, info = env.step(action)
-            next_state = preprocessing_q_learning(next_obs)
-            total_reward += reward
-            done = terminated or truncated
+            epsilon = max(epsilon_min, epsilon * epsilon_decay)
 
-            # Mise à jour de Q-learning
-            current_q = get_q_value(state, action)
-            max_next_q = np.max(Q.get(next_state, np.zeros(n_actions)))
-            new_q = current_q + alpha * (reward + gamma * max_next_q - current_q)
+            print(f"Épisode {episode + 1}/{episodes} | Récompense: {total_reward} | Epsilon: {epsilon:.3f}")
+            file.write(f"Score : {total_reward}, Epsilon : {epsilon:.4f}\n")
 
-            # Mettre à jour la valeur de Q
-            update_q_value(state, action, new_q)
+    # Vérifier et créer le dossier Models si nécessaire
+    if not os.path.exists("Models"):
+        os.makedirs("Models")
 
-            # On passe à l'état suivant
-            state = next_state
-            steps += 1
-
-
-        # Décroissance d'épsilon
-        epsilon = max(epsilon_min, epsilon * epsilon_decay)
-
-        # Affichage des progrès
-        print(f"Épisode {episode + 1}/{episodes} | Récompense totale: {total_reward} | Epsilon: {epsilon:.2f}")
-
-    # A la fin, charger le modèle entraîné dans un pickle
-    with open("q_table.pkl", "wb") as f:
+    # Sauvegarde du modèle
+    with open("Models/q_table.pkl", "wb") as f:
         pkl.dump(Q, f)
+    env.close()
 
+
+# Exécution d'un agent entraîné
 def run_q_learning(pickle_path):
-    Q = {}
-    # Récupération de la table dans le pickle
+    global Q
+
+    # Charger l'environnement
+    env = gym.make("ALE/Assault-v5", render_mode="human")
+    n_actions = env.action_space.n
+
     try:
-        with open("q_table.pkl", "rb") as f:
+        with open(pickle_path, "rb") as f:
             Q = pkl.load(f)
         print("Modèle chargé avec succès !")
     except FileNotFoundError:
-        print("Aucun modèle trouvé")
+        print("Aucun modèle trouvé, exécution impossible.")
+        env.close()
+        return
 
     obs, info = env.reset()
     state = preprocessing_q_learning(obs)
     done = False
 
     while not done:
-        action = np.argmax(Q.get(state, np.zeros(n_actions)))  # Exploitation
+        action = np.argmax(Q.get(state, np.zeros(n_actions)))
         next_obs, reward, terminated, truncated, info = env.step(action)
         state = preprocessing_q_learning(next_obs)
         done = terminated or truncated
         env.render()
 
+    env.close()
 
-env.close()
 
 if __name__ == "__main__":
-    train_q_learning()
+    # Hyperparamètres
+    alpha = 0.1
+    gamma = 0.99
+    epsilon = 1.0
+    epsilon_decay = 0.995
+    epsilon_min = 0.01
+    episodes = 2000
+
+    filename = "Results/perf_q_learning.txt"
+    # Entraîner le modèle
+    train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes)
+
+    # Lancer l'agent entraîné
+    run_q_learning("Models/q_table.pkl")
