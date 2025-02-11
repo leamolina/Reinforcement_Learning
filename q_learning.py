@@ -1,10 +1,10 @@
+import os  # Pour gérer les fichiers et dossiers
+import pickle as pkl
+import random
+
+import cv2
 import gymnasium as gym
 import numpy as np
-import random
-import ale_py
-import cv2
-import pickle as pkl
-import os  # Pour gérer les fichiers et dossiers
 
 # La table Q est une variable globale
 Q = {}
@@ -113,8 +113,8 @@ if __name__ == "__main__":
     epsilon_min = 0.01
     episodes = 2000
 
-    filename = "Results/perf_q_learning.txt"
     # Entraîner le modèle
+    filename = "Results/perf_q_learning.txt"
     train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes)
 
     # Lancer l'agent entraîné

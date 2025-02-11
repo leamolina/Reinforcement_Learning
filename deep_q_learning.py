@@ -9,24 +9,6 @@ import torch.nn.functional as F
 from torch import optim
 from collections import deque
 
-# Charger l'environnement (étape 1 sur l'overleaf)
-gym.register_envs(ale_py)
-env = gym.make("ALE/Assault-v5", render_mode="human")
-num_actions = env.action_space.n
-input_shape = (4, 84, 84)  # Stack de 4 frames, 84x84
-
-# Hyperparamètres (étape 6 sur l'overleaf)
-gamma = 0.99
-epsilon = 1.0  # Taux d'exploration
-epsilon_min = 0.01  # Minimum pour epsilon
-epsilon_decay = 0.995  # Décroissance d'épsilon
-episodes = 5000  # Nombre d'épisodes d'entraînement
-minibatch_size = 32
-replay_memory_size = 10000
-alpha = 0.0001  # Taux d'apprentissage
-
-# Mémoire de replay
-replay_memory = deque(maxlen=replay_memory_size)
 
 # Preprocessing (étape 2 sur l'overleaf)
 def preprocessing(frame):
@@ -56,13 +38,10 @@ class DQN(nn.Module):
         x = F.relu(self.fc1(x))
         return self.fc2(x)
 
-# Instanciation du modèle (PyTorchà
-dqn = DQN(input_shape, num_actions)
-optimizer = optim.Adam(dqn.parameters(), lr=alpha)
-loss_fn = nn.MSELoss()
+
 
 # Fonction pour choisir une action (epsilon-greedy)
-def choose_action(state, epsilon, num_actions):
+def choose_action(state, epsilon, num_actions, device, dqn):
     if np.random.rand() < epsilon:
         return random.randint(0, num_actions - 1)
     else:
@@ -72,7 +51,9 @@ def choose_action(state, epsilon, num_actions):
         return torch.argmax(q_values).item()
 
 # Fonction pour entraîner le DQN
-def train_dqn():
+def train_step(device, dqn, optimizer, loss_fn, replay_memory):
+
+
     if len(replay_memory) < minibatch_size:
         return
 
@@ -101,40 +82,111 @@ def train_dqn():
     loss.backward()
     optimizer.step()
 
-# Étape 4 : Deep Q-Learning
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-dqn.to(device)
 
-for episode in range(episodes):
+# Étape 4 : Entraînement à l'aide du Deep Q-Learning
+def train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha, model_path):
+
+    # Charger l'environnement (étape 1 sur l'overleaf)
+    gym.register_envs(ale_py)
+    env = gym.make("ALE/Assault-v5", render_mode='rgb_array')
+    num_actions = env.action_space.n
+    input_shape = (4, 84, 84)  # Stack de 4 frames, 84x84
+
+    # Instanciation du modèle (PyTorchà
+    dqn = DQN(input_shape, num_actions)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    dqn.to(device)
+
+    optimizer = optim.Adam(dqn.parameters(), lr=alpha)
+    loss_fn = nn.MSELoss()
+
+    for episode in range(episodes):
+        state, _ = env.reset()
+        state = preprocessing(state)
+        state_stack = np.stack([state] * 4, axis=0)  # Stack initial de 4 frames
+        done = False
+        score = 0
+
+        while not done:
+
+            # Choisir une action
+            action = choose_action(state_stack, epsilon, num_actions, device, dqn)
+
+            # Effectuer une action dans l'environnement
+            next_state, reward, done, _, _ = env.step(action)
+            next_state = preprocessing(next_state)
+            next_state_stack = np.append(state_stack[1:], [next_state], axis=0)
+
+            # Ajouter la transition à la mémoire de replay
+            replay_memory.append((state_stack, action, reward, next_state_stack, done))
+
+            # Mettre à jour l'état
+            state_stack = next_state_stack
+            score += reward
+
+            # Entraîner le modèle
+            train_step(device, dqn, optimizer, loss_fn, replay_memory)
+
+        # Réduire epsilon (exploration vs exploitation)
+        if epsilon > epsilon_min:
+            epsilon *= epsilon_decay
+
+        print(f"Épisode {episode + 1}/{episodes}, Score: {score}, Epsilon: {epsilon:.4f}")
+
+    env.close()
+
+    # Enregistrement du modèle
+    torch.save(dqn.state_dict(), model_path)
+    print("Modèle sauvegardé dans", model_path, "avec succès.")
+
+
+
+def run_dqn(model_path):
+    env = gym.make("ALE/Assault-v5", render_mode='human')
+    num_actions = env.action_space.n
+    input_shape = (4, 84, 84)
+
+    dqn = DQN(input_shape, num_actions)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    dqn.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    dqn.to(device)
+    dqn.eval()
+
     state, _ = env.reset()
     state = preprocessing(state)
-    state_stack = np.stack([state] * 4, axis=0)  # Stack initial de 4 frames
+    state_stack = np.stack([state] * 4, axis=0)
     done = False
     score = 0
 
     while not done:
-        # Choisir une action
-        action = choose_action(state_stack, epsilon, num_actions)
-
-        # Effectuer une action dans l'environnement
+        action = choose_action(state_stack, 0.05, num_actions, device, dqn)  # Faible epsilon pour exploitation
         next_state, reward, done, _, _ = env.step(action)
         next_state = preprocessing(next_state)
-        next_state_stack = np.append(state_stack[1:], [next_state], axis=0)
-
-        # Ajouter la transition à la mémoire de replay
-        replay_memory.append((state_stack, action, reward, next_state_stack, done))
-
-        # Mettre à jour l'état
-        state_stack = next_state_stack
+        state_stack = np.append(state_stack[1:], [next_state], axis=0)
         score += reward
 
-        # Entraîner le modèle
-        train_dqn()
+    print("Score obtenu :", score)
 
-    # Réduire epsilon (exploration vs exploitation)
-    if epsilon > epsilon_min:
-        epsilon *= epsilon_decay
+    env.close()
 
-    print(f"Épisode {episode + 1}/{episodes}, Score: {score}, Epsilon: {epsilon:.4f}")
+if __name__ == "__main__":
 
-env.close()
+    # Hyperparamètres (étape 6 sur l'overleaf)
+    gamma = 0.99
+    epsilon = 1.0  # Taux d'exploration
+    epsilon_min = 0.01  # Minimum pour epsilon
+    epsilon_decay = 0.995  # Décroissance d'épsilon
+    episodes = 20  # Nombre d'épisodes d'entraînement
+    minibatch_size = 32
+    replay_memory_size = 10000
+    alpha = 0.0001  # Taux d'apprentissage
+
+    # Entrainement du modèle
+    replay_memory = deque(maxlen=replay_memory_size)
+    model_path = "./Models/model_dqn.pt"
+    train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha,model_path)
+
+    # Lancement du modèle entraîné
+    run_dqn(model_path)
+
+
