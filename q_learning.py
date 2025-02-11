@@ -60,8 +60,8 @@ def train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min
 
             epsilon = max(epsilon_min, epsilon * epsilon_decay)
 
-            print(f"Épisode {episode + 1}/{episodes} | Récompense: {total_reward} | Epsilon: {epsilon:.3f}")
-            file.write(f"Score : {total_reward}, Epsilon : {epsilon:.4f}\n")
+            print("Épisode", episode + 1, "/episodes | Récompense: ", total_reward, " | Epsilon: ", epsilon)
+            file.write("Score : ", total_reward, "Epsilon : ", epsilon)
 
     # Vérifier et créer le dossier Models si nécessaire
     if not os.path.exists("Models"):

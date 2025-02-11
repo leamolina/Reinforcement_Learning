@@ -131,7 +131,7 @@ def train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_me
         if epsilon > epsilon_min:
             epsilon *= epsilon_decay
 
-        print(f"Épisode {episode + 1}/{episodes}, Score: {score}, Epsilon: {epsilon:.4f}")
+        print("Épisode ", episode + 1, "/{episodes}, Score: ", score, "Epsilon: ", epsilon)
 
     env.close()
 
