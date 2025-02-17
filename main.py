@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
         # Deep Q-Learning Double
         elif modele_choisi == 4:
-            run_deep_q_learning_double("Models/model_deep_q_learning_double_4500ep.pth")
+            run_deep_q_learning_double("Models/model_deep_q_learning_double.pth")
             break
 
         else:
