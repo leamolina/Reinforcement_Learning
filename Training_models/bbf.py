@@ -138,7 +138,7 @@ def train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_upd
 
                 # Sauvegarde des performances d'entraînement dans un fichier texte
                 with open(perf_path, 'a') as f:
-                    f.write("Episode", episode+1 , "/", episodes, "Reward:", total_reward, ", Epsilon :", epsilon, "\n")
+                    f.write("Episode"+ str(episode+1) + "/"+ str(episodes)+ "Reward:"+ str(total_reward) + ", Epsilon :"+ str(epsilon) + "\n")
 
                 epsilon = max(epsilon_min, epsilon * epsilon_decay) # Décroissance d'epsilon
                 break

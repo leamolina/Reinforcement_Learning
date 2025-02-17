@@ -85,7 +85,7 @@ def train_step(device, dqn, optimizer, loss_fn, replay_memory):
 
 
 # Entraînement à l'aide du Deep Q-Learning
-def train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha, model_path):
+def train_deep_q_learning(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha, model_path):
 
     # Charger l'environnement
     gym.register_envs(ale_py)
@@ -142,7 +142,7 @@ def train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_me
 
 
 
-def run_dqn(model_path):
+def run_deep_q_learning(model_path):
     env = gym.make("ALE/Assault-v5", render_mode='human')
     num_actions = env.action_space.n
     input_shape = (4, 84, 84)
@@ -185,5 +185,5 @@ if __name__ == "__main__":
     # Entrainement du modèle
     replay_memory = deque(maxlen=replay_memory_size)
     model_path = "../Models/model_deep_q_learning.pt"
-    train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha,model_path)
+    train_deep_q_learning(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha,model_path)
 
