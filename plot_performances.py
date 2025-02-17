@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Nom du fichier contenant les données
-fichier = "Results/perf_q_learning.txt"
+fichier = "Results/perf_dqn.txt"
 
 # Initialisation de la liste pour stocker les scores
 rewards = []
@@ -10,11 +10,11 @@ rewards = []
 # Lecture du fichier et extraction des scores
 with open(fichier, "r", encoding="utf-8") as file:
     for line in file:
-        if "Score :" in line:
+        if "Score:" in line:
             # Extraction du score en utilisant un découpage de la ligne
             parts = line.split(",")  # On sépare par des virgules
             for part in parts:
-                if "Score :" in part:
+                if "Score:" in part:
                     # On récupère le score après "Score:"
                     score = float(part.split(":")[1].strip())
                     rewards.append(score)

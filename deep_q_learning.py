@@ -10,19 +10,18 @@ from torch import optim
 from collections import deque
 
 
-# Preprocessing (étape 2 sur l'overleaf)
+# Preprocessing : On convertit les images en niveaux de gris et on les réduit à une résolution de 84x84
 def preprocessing(frame):
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
     resized_frame = cv2.resize(gray_frame, (84, 84), interpolation=cv2.INTER_AREA)
     normalized_frame = resized_frame / 255.0
     return normalized_frame
 
-# Réseau de neurones (étape 3 sur l'overleaf)
-# On décide de faire un objet pour pouvoir le réutiliser plus facilement
-
+# Réseau de neurones
 class DQN(nn.Module):
 
-    # On initialise le réseau de neuronnes selon ce qu'on a dit sur l'overleaf
+
+    # Initialisation du réseau de neuronnes
     def __init__(self, input_shape, num_actions):
         super(DQN, self).__init__()
         self.conv1 = nn.Conv2d(input_shape[0], 16, kernel_size=8, stride=4) # Première couche
@@ -30,17 +29,17 @@ class DQN(nn.Module):
         self.fc1 = nn.Linear(32 * 9 * 9, 256)  # Calculé après les convolutions
         self.fc2 = nn.Linear(256, num_actions)
 
-    # Mise en forme du réseau de neuronnes à l'aide de PyTorch (activation ReLU pour les deux couches convolutionnelles)
+    # Mise en forme du réseau de neuronnes (activation ReLU pour les deux couches convolutionnelles)
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
-        x = x.view(x.size(0), -1)  # Aplatir
+        x = x.view(x.size(0), -1)  # On applatit
         x = F.relu(self.fc1(x))
         return self.fc2(x)
 
 
 
-# Fonction pour choisir une action (epsilon-greedy)
+# Choix d'une action (epsilon-greedy)
 def choose_action(state, epsilon, num_actions, device, dqn):
     if np.random.rand() < epsilon:
         return random.randint(0, num_actions - 1)
@@ -50,9 +49,8 @@ def choose_action(state, epsilon, num_actions, device, dqn):
             q_values = dqn(state_tensor)
         return torch.argmax(q_values).item()
 
-# Fonction pour entraîner le DQN
+# Etape d'entraînement du DQN
 def train_step(device, dqn, optimizer, loss_fn, replay_memory):
-
 
     if len(replay_memory) < minibatch_size:
         return
@@ -83,7 +81,7 @@ def train_step(device, dqn, optimizer, loss_fn, replay_memory):
     optimizer.step()
 
 
-# Étape 4 : Entraînement à l'aide du Deep Q-Learning
+# Entraînement à l'aide du Deep Q-Learning
 def train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha, model_path):
 
     # Charger l'environnement (étape 1 sur l'overleaf)
@@ -171,12 +169,12 @@ def run_dqn(model_path):
 
 if __name__ == "__main__":
 
-    # Hyperparamètres (étape 6 sur l'overleaf)
+    # Hyperparamètres
     gamma = 0.99
     epsilon = 1.0  # Taux d'exploration
     epsilon_min = 0.01  # Minimum pour epsilon
     epsilon_decay = 0.995  # Décroissance d'épsilon
-    episodes = 20  # Nombre d'épisodes d'entraînement
+    episodes = 2500  # Nombre d'épisodes d'entraînement
     minibatch_size = 32
     replay_memory_size = 10000
     alpha = 0.0001  # Taux d'apprentissage
@@ -185,8 +183,4 @@ if __name__ == "__main__":
     replay_memory = deque(maxlen=replay_memory_size)
     model_path = "./Models/model_dqn.pt"
     train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha,model_path)
-
-    # Lancement du modèle entraîné
-    run_dqn(model_path)
-
 
