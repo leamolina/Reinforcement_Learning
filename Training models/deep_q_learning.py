@@ -10,7 +10,7 @@ from torch import optim
 from collections import deque
 
 
-# Preprocessing : On convertit les images en niveaux de gris et on les réduit à une résolution de 84x84
+# Preprocessing : On convertit les images en niveaux de gris et on les réduit à une résolution de 84x84, et les valeurs des pixels sont normalisées en les divisant par 255.0,
 def preprocessing(frame):
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
     resized_frame = cv2.resize(gray_frame, (84, 84), interpolation=cv2.INTER_AREA)
@@ -184,6 +184,6 @@ if __name__ == "__main__":
 
     # Entrainement du modèle
     replay_memory = deque(maxlen=replay_memory_size)
-    model_path = "./Models/model_deep_q_learning.pt"
+    model_path = "../Models/model_deep_q_learning.pt"
     train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha,model_path)
 

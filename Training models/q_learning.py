@@ -31,12 +31,12 @@ def update_q_value(state, action, value, n_actions):
     Q[state][action] = value
 
 # Entraînement Q-learning
-def train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes):
+def train_q_learning(perf_path, model_path, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes):
     env = gym.make("ALE/Assault-v5", render_mode="rgb_array")
     n_actions = env.action_space.n
     global Q
 
-    with open(filename, "w")  as file:
+    with open(perf_path, "w")  as file:
         for episode in range(episodes):
             obs, info = env.reset()
             state = preprocessing_q_learning(obs)
@@ -63,12 +63,9 @@ def train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min
             print("Épisode", episode + 1, "/episodes | Récompense: ", total_reward, " | Epsilon: ", epsilon)
             file.write("Score : ", total_reward, "Epsilon : ", epsilon)
 
-    # Vérifier et créer le dossier Models si nécessaire
-    if not os.path.exists("Models"):
-        os.makedirs("Models")
 
     # Sauvegarde du modèle
-    with open("Models/model_q_learning.pkl", "wb") as f:
+    with open(model_path, "wb") as f:
         pkl.dump(Q, f)
     env.close()
 
@@ -114,8 +111,9 @@ if __name__ == "__main__":
     episodes = 2000
 
     # Entraîner le modèle
-    filename = "Results/perf_q_learning.txt"
-    train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes)
+    perf_path = "./Results/perf_q_learning.txt"
+    model_path = "./Models/model_q_learning.pkl"
+    train_q_learning(perf_path, model_path, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes)
 
     # Lancer l'agent entraîné
-    run_q_learning("Models/model_q_learning.pkl")
+    run_q_learning(model_path)

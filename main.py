@@ -9,8 +9,6 @@ from torch import optim
 from collections import deque
 import ale_py
 import time
-from preprocessing import preprocessing
-from DuelingDQN import DuelingDQN
 
 
 # Evaluation du modèle entraîné sur 2 épisodes

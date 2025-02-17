@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Nom du fichier contenant les données
-fichier = "Results/perf_dqn.txt"
+fichier = "Results/perf_deep_q_learning.txt"
 
 # Initialisation de la liste pour stocker les scores
 rewards = []

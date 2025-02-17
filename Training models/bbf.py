@@ -9,27 +9,22 @@ import torch.optim as optim
 from collections import deque
 
 
-
-
-# Preprocessing
+# Preprocessing : On convertit les images en niveaux de gris et on les réduit à une résolution de 84x84
 def preprocess_frame(frame):
-    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY) # Reduces dimensionality by converting the frame to a single channel.
-    resized = cv2.resize(gray, (84, 84)) # The original Atari frame is resized to 84x84 pixels to reduce computation.
+    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+    resized = cv2.resize(gray, (84, 84))
     return resized
 
-# Experience Replay Buffer (Stores experiences : state, action, reward, next_state, done for training.)
-"""
-push(): Adds a new experience to the buffer.
-sample(): Randomly samples a batch for training.
-deque: Automatically removes the oldest experience if the buffer is full.
-"""
+# Classe ReplayBuffer qui permet de stocker les expériences (state, action, reward, next_state, done)
 class ReplayBuffer:
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
 
+    # Ajout d'une nouvelle expérience dans le buffer
     def push(self, state, action, reward, next_state, done):
         self.buffer.append((state, action, reward, next_state, done))
 
+    # On choisit un batch aléatoirement (pour l'entraînement)
     def sample(self, batch_size):
         batch = random.sample(self.buffer, batch_size)
         states, actions, rewards, next_states, dones = zip(*batch)
@@ -38,25 +33,21 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
-#Neural Network
-# Define the Q-Network (ResNet inspired Impala-CNN)
-"""
-CNN Architecture (Impala-style):
-    3 Convolutional layers extract features from the input frames.
-    ReLU activations introduce non-linearity.
-    Flatten and fully connected layers map extracted features to Q-values.
-Input: 4 stacked grayscale frames.
-Output: Q-values for each action.
-"""
+
+
+# Réseau de neuronnes Q-Network
 class QNetwork(nn.Module):
+
+    # Initialisation du réseau de neuronnes (à l'aide de l'architecture Impala-CNN)
     def __init__(self, action_size):
         super(QNetwork, self).__init__()
+
         self.net = nn.Sequential(
-            nn.Conv2d(4, 32, kernel_size=8, stride=4),
+            nn.Conv2d(4, 32, kernel_size=8, stride=4),  # 1ère couche de convolution (En entrée 4 images de taille 84x84)
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2), # 2ème couche de convolution
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1), # 3ème couche de convolution
             nn.ReLU(),
             nn.Flatten(),
             nn.Linear(64 * 7 * 7, 512),
@@ -69,13 +60,10 @@ class QNetwork(nn.Module):
 
 
 
-# Epsilon-greedy action selection
-"""
-Uses a decaying epsilon-greedy strategy.
-Chooses a random action with probability ε.
-Selects the action with the highest Q-value otherwise.
-"""
+# Choix des actions (Epsilon-greedy)
 def select_action(state, steps_done, policy_net, device, action_size, epsilon, epsilon_min, epsilon_decay):
+
+    # Epsilon diminue à chaque fois pour favoriser l'exploitation par rapport à l'exploration
     eps_threshold = epsilon_min + (epsilon - epsilon_min) * np.exp(-1. * steps_done / epsilon_decay)
     if random.random() > eps_threshold:
         with torch.no_grad():
@@ -83,21 +71,13 @@ def select_action(state, steps_done, policy_net, device, action_size, epsilon, e
     else:
         return random.randrange(action_size)
 
-# Training loop:
-"""
-Process:
-Environment Reset: The game environment is reset at the beginning of each episode.
-State Stacking: Four consecutive frames are stacked for richer state representation.
-Action Selection: The agent selects an action using the ε-greedy policy.
-Environment Interaction: The agent interacts with the environment and stores the experience.
-State Transition: The next frame is preprocessed and added to the state stack.
-"""
-def train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_update, memory_size, learning_rate, replay_ratio, episodes, model_path):
-    # Load the environment
+# Entraînement
+def train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_update, memory_size, learning_rate, replay_ratio, episodes, model_path, perf_path):
+
+    # Charger l'environnement
     gym.register_envs(ale_py)
     env = gym.make("ALE/Assault-v5", render_mode="rgb_array")
 
-    # Initialize networks and replay buffer
     action_size = env.action_space.n
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -108,12 +88,17 @@ def train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_upd
     memory = ReplayBuffer(memory_size)
 
     steps_done = 0
+
+
     for episode in range(episodes):
-        state = preprocess_frame(env.reset()[0])
+
+        state = preprocess_frame(env.reset()[0]) # Réinitialisation de l'environnement
         state_stack = np.stack([state] * 4, axis=0)
         total_reward = 0
 
+
         while True:
+
             state_tensor = torch.FloatTensor(state_stack).unsqueeze(0).to(device)
             action = select_action(state_tensor, steps_done, policy_net, device, action_size, epsilon, epsilon_min, epsilon_decay)
             next_state, reward, done, _, _ = env.step(action)
@@ -126,14 +111,7 @@ def train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_upd
             total_reward += reward
             steps_done += 1
 
-            # Sample batch and train
-            """
-            Minibatch Training: A batch of experiences is sampled from the buffer.
-            Q-Value Calculation:
-            Predicted Q-value: From the policy network.
-            Target Q-value: Reward + discounted future reward from the target network.
-            Loss Calculation: Mean Squared Error (MSE) between predicted and target Q-values.
-            Optimizer Step: The network is updated using AdamW."""
+            # Entraînement sur les batches : on prend un batch d'expériences du buffer
             if len(memory) > batch_size:
                 states, actions, rewards, next_states, dones = memory.sample(batch_size)
                 states = torch.FloatTensor(states).to(device)
@@ -150,14 +128,19 @@ def train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_upd
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-            # Target Network Syncing: Every 10,000 steps, the target network is updated to match the policy network.
+
+            # Toutes les 10 000 étapes, le réseau cible est mis à jour pour correspondre au réseau de politique.
             if steps_done % target_update < batch_size:
                 target_net.load_state_dict(policy_net.state_dict())
 
             if done:
                 print("Episode", episode+1 , "/", episodes, "Reward:", total_reward, ", Epsilon :", epsilon)
-                # Décroissance d'epsilon :
-                epsilon = max(epsilon_min, epsilon * epsilon_decay)
+
+                # Sauvegarde des performances d'entraînement dans un fichier texte
+                with open(perf_path, 'a') as f:
+                    f.write("Episode", episode+1 , "/", episodes, "Reward:", total_reward, ", Epsilon :", epsilon, "\n")
+
+                epsilon = max(epsilon_min, epsilon * epsilon_decay) # Décroissance d'epsilon
                 break
 
     # Sauvegarde du modèle entraîné
@@ -167,15 +150,16 @@ def train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_upd
     env.close()
 
 def run_bbf(model_path):
-    # Load environment
+
+    # Charger l'environnement
     env = gym.make("ALE/Assault-v5", render_mode="human")
     action_size = env.action_space.n
 
-    # Load trained model
+    # Récupération du modèle
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     policy_net = QNetwork(action_size).to(device)
     policy_net.load_state_dict(torch.load(model_path, map_location=device))
-    policy_net.eval()  # Set model to evaluation mode
+    policy_net.eval()
 
     state = preprocess_frame(env.reset()[0])
     state_stack = np.stack([state] * 4, axis=0)
@@ -201,20 +185,21 @@ def run_bbf(model_path):
 if __name__ == "__main__":
 
     # Hyperparamètres
-    batch_size = 32  # Number of samples per gradient step.
+    batch_size = 32
     gamma = 0.99
     epsilon = 0.995
     epsilon_min = 0.1
     epsilon_decay = 0.995
-    target_update = 10000  # Target Network Update Frequency
-    memory_size = 1000000  # Replay Buffer Size ( Capacity for storing past experiences)
-    learning_rate = 1e-4  # Optimizer's step size
-    replay_ratio = 8  # Number of gradient steps per environment interaction
-    episodes = 10  # Number of training episodes
+    target_update = 10000
+    memory_size = 1000000
+    learning_rate = 1e-4
+    replay_ratio = 8
+    episodes = 2500
 
     # Entraînement du modèle
-    model_path = "./Models/model_bbf.pth"
-    train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_update, memory_size, learning_rate, replay_ratio, episodes, model_path)
+    model_path = "../Models/model_bbf.pth"
+    perf_path = "./Results/perf_bbf.txt"
+    train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_update, memory_size, learning_rate, replay_ratio, episodes, model_path, perf_path)
 
     # Lancement du modèle entrainé
     run_bbf(model_path)
