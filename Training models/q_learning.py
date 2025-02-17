@@ -111,7 +111,7 @@ if __name__ == "__main__":
     episodes = 2000
 
     # Entraîner le modèle
-    perf_path = "./Results/perf_q_learning.txt"
+    perf_path = "./Training performances/perf_q_learning.txt"
     model_path = "./Models/model_q_learning.pkl"
     train_q_learning(perf_path, model_path, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes)
 
