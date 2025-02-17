@@ -84,9 +84,6 @@ def train_dqn():
 
 
 def train(epsilon, num_actions, file_name):
-    print("Training...")
-    list_rewards = []
-    list_epsilon = []
     with open(file_name, "w") as file:
         # Boucle principale d'entraînement
         for episode in range(episodes):

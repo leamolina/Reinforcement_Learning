@@ -68,7 +68,7 @@ def train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min
         os.makedirs("Models")
 
     # Sauvegarde du modèle
-    with open("Models/q_table.pkl", "wb") as f:
+    with open("Models/model_q_learning.pkl", "wb") as f:
         pkl.dump(Q, f)
     env.close()
 
@@ -118,4 +118,4 @@ if __name__ == "__main__":
     train_q_learning(filename, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes)
 
     # Lancer l'agent entraîné
-    run_q_learning("Models/q_table.pkl")
+    run_q_learning("Models/model_q_learning.pkl")

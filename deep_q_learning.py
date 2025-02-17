@@ -17,6 +17,8 @@ def preprocessing(frame):
     normalized_frame = resized_frame / 255.0
     return normalized_frame
 
+
+
 # Réseau de neurones
 class DQN(nn.Module):
 
@@ -48,6 +50,7 @@ def choose_action(state, epsilon, num_actions, device, dqn):
         with torch.no_grad():
             q_values = dqn(state_tensor)
         return torch.argmax(q_values).item()
+
 
 # Etape d'entraînement du DQN
 def train_step(device, dqn, optimizer, loss_fn, replay_memory):
@@ -84,13 +87,13 @@ def train_step(device, dqn, optimizer, loss_fn, replay_memory):
 # Entraînement à l'aide du Deep Q-Learning
 def train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha, model_path):
 
-    # Charger l'environnement (étape 1 sur l'overleaf)
+    # Charger l'environnement
     gym.register_envs(ale_py)
     env = gym.make("ALE/Assault-v5", render_mode='rgb_array')
     num_actions = env.action_space.n
-    input_shape = (4, 84, 84)  # Stack de 4 frames, 84x84
+    input_shape = (4, 84, 84)
 
-    # Instanciation du modèle (PyTorchà
+    # Instanciation du modèle
     dqn = DQN(input_shape, num_actions)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     dqn.to(device)
@@ -101,7 +104,7 @@ def train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_me
     for episode in range(episodes):
         state, _ = env.reset()
         state = preprocessing(state)
-        state_stack = np.stack([state] * 4, axis=0)  # Stack initial de 4 frames
+        state_stack = np.stack([state] * 4, axis=0)
         done = False
         score = 0
 
@@ -125,11 +128,11 @@ def train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_me
             # Entraîner le modèle
             train_step(device, dqn, optimizer, loss_fn, replay_memory)
 
-        # Réduire epsilon (exploration vs exploitation)
+        # Réduire epsilon : on exploite un peu plus
         if epsilon > epsilon_min:
             epsilon *= epsilon_decay
 
-        print("Épisode ", episode + 1, "/{episodes}, Score: ", score, "Epsilon: ", epsilon)
+        print("Épisode ", episode + 1, "/", episodes, ", Score: ", score, "Epsilon: ", epsilon)
 
     env.close()
 
@@ -181,6 +184,6 @@ if __name__ == "__main__":
 
     # Entrainement du modèle
     replay_memory = deque(maxlen=replay_memory_size)
-    model_path = "./Models/model_dqn.pt"
+    model_path = "./Models/model_deep_q_learning.pt"
     train_dqn(gamma, epsilon, epsilon_decay, episodes, minibatch_size, replay_memory, alpha,model_path)
 
