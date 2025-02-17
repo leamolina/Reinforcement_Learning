@@ -166,7 +166,7 @@ def run_deep_q_learning(model_path):
         state_stack = np.append(state_stack[1:], [next_state], axis=0)
         score += reward
 
-    print("Score obtenu :", score)
+    print("Partie terminée. Score obtenu :", score)
 
     env.close()
 

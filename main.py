@@ -11,34 +11,29 @@ if __name__ == "__main__":
     print("3 : BBF")
     print("4 : Deep Q-Learning Double")
 
+    modele_choisi = int(input("Quel modèle souhaitez-vous utiliser ? (choisir un entier entre 1 et 4) : "))
+
     while True:
 
-        try:
-            modele_choisi = int(input("Quel modèle souhaitez-vous utiliser ? (choisir un entier entre 1 et 4) : "))
+        # Q-Learning
+        if modele_choisi == 1:
+            run_q_learning("Models/model_q_learning.pkl")
+            break
 
-            # Q-Learning
-            if modele_choisi == 1:
-                run_q_learning("Models/model_q_learning.pkl")
-                break
+        # Deep Q-Learning
+        elif modele_choisi == 2:
+            run_deep_q_learning("Models/model_deep_q_learning.pt")
+            break
 
-            # Deep Q-Learning
-            elif modele_choisi == 2:
-                run_deep_q_learning("Models/model_deep_q_learning.pt")
-                break
+        # BBF
+        elif modele_choisi == 3:
+            run_bbf("Models/model_bbf.pth")
+            break
 
-            # BBF
-            elif modele_choisi == 3:
-                run_bbf("Models/model_bbf.pth")
-                break
+        # Deep Q-Learning Double
+        elif modele_choisi == 4:
+            run_deep_q_learning_double("Models/model_deep_q_learning_double_4500ep.pth")
+            break
 
-            # Deep Q-Learning Double
-            elif modele_choisi == 4:
-                run_deep_q_learning_double("Models/model_deep_q_learning_double_4500ep.pth")
-                break
-
-            else:
-                print("Veuillez entrer un nombre entre 1 et 4.")
-
-
-        except ValueError:
-            print("Ce n'est pas un entier valide. Essayez encore.")
+        else:
+            modele_choisi = int(input("Ce n'est pas un entier valide. Veuillez entrer un nombre entre 1 et 4 : "))

@@ -176,7 +176,7 @@ def run_bbf(model_path):
         total_reward += reward
 
         if done:
-            print("Partie terminée, Score : ", total_reward)
+            print("Partie terminée. Score obtenu : ", total_reward)
             break
 
     env.close()

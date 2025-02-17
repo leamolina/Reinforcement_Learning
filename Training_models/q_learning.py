@@ -81,7 +81,6 @@ def run_q_learning(pickle_path):
     try:
         with open(pickle_path, "rb") as f:
             Q = pkl.load(f)
-        print("Modèle chargé avec succès !")
     except FileNotFoundError:
         print("Aucun modèle trouvé, exécution impossible.")
         env.close()
@@ -90,14 +89,17 @@ def run_q_learning(pickle_path):
     obs, info = env.reset()
     state = preprocessing_q_learning(obs)
     done = False
+    score = 0
 
     while not done:
         action = np.argmax(Q.get(state, np.zeros(n_actions)))
         next_obs, reward, terminated, truncated, info = env.step(action)
+        score += reward
         state = preprocessing_q_learning(next_obs)
         done = terminated or truncated
         env.render()
 
+    print("Partie terminée. Score obtenu :", score)
     env.close()
 
 
