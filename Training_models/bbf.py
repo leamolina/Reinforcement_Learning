@@ -200,6 +200,3 @@ if __name__ == "__main__":
     model_path = "../Models/model_bbf.pth"
     perf_path = "./Training performances/perf_bbf.txt"
     train_bbf(batch_size, gamma, epsilon, epsilon_min, epsilon_decay, target_update, memory_size, learning_rate, replay_ratio, episodes, model_path, perf_path)
-
-    # Lancement du modèle entrainé
-    run_bbf(model_path)
