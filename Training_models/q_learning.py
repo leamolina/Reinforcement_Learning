@@ -1,7 +1,7 @@
 import os  # Pour gérer les fichiers et dossiers
 import pickle as pkl
 import random
-
+import ale_py
 import cv2
 import gymnasium as gym
 import numpy as np
@@ -32,6 +32,7 @@ def update_q_value(state, action, value, n_actions):
 
 # Entraînement Q-learning
 def train_q_learning(perf_path, model_path, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes):
+    gym.register_envs(ale_py)
     env = gym.make("ALE/Assault-v5", render_mode="rgb_array")
     n_actions = env.action_space.n
     global Q
@@ -61,7 +62,7 @@ def train_q_learning(perf_path, model_path, alpha, gamma, epsilon, epsilon_decay
             epsilon = max(epsilon_min, epsilon * epsilon_decay)
 
             print("Épisode", episode + 1, "/episodes | Récompense: ", total_reward, " | Epsilon: ", epsilon)
-            file.write("Score : ", total_reward, "Epsilon : ", epsilon)
+            file.write("Score : " + str(total_reward) + " Epsilon : " + str(epsilon) + "\n")
 
 
     # Sauvegarde du modèle
@@ -113,6 +114,6 @@ if __name__ == "__main__":
     episodes = 2000
 
     # Entraîner le modèle
-    perf_path = "./Training performances/perf_q_learning.txt"
-    model_path = "./Models/model_q_learning.pkl"
+    perf_path = "../Training performances/perf_q_learning_250ep.txt"
+    model_path = "../Models/model_q_learning_250ep.pkl"
     train_q_learning(perf_path, model_path, alpha, gamma, epsilon, epsilon_decay, epsilon_min, episodes)
